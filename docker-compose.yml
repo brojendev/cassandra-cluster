@@ -1,0 +1,80 @@
+version: '3.7' # 2.4 is the last version that supports depends_on conditions for service health
+networks:
+  cassandra:  # docker network where all cassandra nodes will be put in
+services:
+  node1:
+    image: cassandra:3.11.13   # better to use a specific version, if you want to control upgrades
+    container_name: node1
+    hostname: node1
+    deploy:
+      resources:      
+        limits:
+          memory: 5G  # It's not strictly required, but it's better to have some memory limit
+    restart: always
+    healthcheck:
+        test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
+        interval: 5s
+        timeout: 5s
+        retries: 60
+    networks:
+      - cassandra
+    ports:
+      - "9042:9042"  # Expose native binary CQL port for your apps
+    volumes:
+      - ./data/node1:/var/lib/cassandra    # This is the volume that will persist data for node1 node
+      - ./etc/node1:/etc/cassandra   # Use your own config files for full control
+    env_file:
+      - local.env
+  node2:
+    image: cassandra:3.11.13
+    container_name: node2
+    hostname: node2
+    deploy:
+      resources:      
+        limits:
+          memory: 5G  # It's not strictly required, but it's better to have some memory limit
+    restart: always
+    healthcheck:
+        test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
+        interval: 5s
+        timeout: 5s
+        retries: 60
+    networks:
+      - cassandra
+    ports:
+      - "9043:9042"  # Expose native binary CQL port for your apps
+    volumes:
+      - ./data/node2:/var/lib/cassandra    # This is the volume that will persist data for node2 node
+      - ./etc/node2:/etc/cassandra    # Use your own config files for full control
+    env_file:
+      - local.env    # point to "environment" to use the same environment variables as node1
+    depends_on:
+      node1:    # start node2 only after node1 is healthy
+        condition: service_healthy
+  # node3:
+  #   image: cassandra:3.11.13
+  #   container_name: node3
+  #   hostname: node3
+  #   deploy:
+  #     resources:      
+  #       limits:
+  #         memory: 5G  # It's not strictly required, but it's better to have some memory limit
+  #   restart: always
+  #   # healthcheck:
+  #   #     test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
+  #   #     interval: 5s
+  #   #     timeout: 5s
+  #   #     retries: 60
+  #   networks:
+  #     - cassandra
+  #   ports:
+  #     - "9044:9042"  # Expose native binary CQL port for your apps
+  #   volumes:
+  #     - ./data/node3:/var/lib/cassandra    # This is the volume that will persist data for node3 node
+  #     - ./etc/node3:/etc/cassandra    # Use your own config files for full control
+  #   env_file:
+  #     - local.env    # point to "environment" to use the same environment variables as node1
+  #   depends_on:
+  #     node2:    # start node3 only after node1 is healthy
+  #       condition: service_healthy # node3 only after node2
+  
